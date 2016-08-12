@@ -1,4 +1,4 @@
-aed2aab35171c9018e91ce22c11199db *DESCRIPTION
+f59cbf8190dc624e24f6512539778271 *DESCRIPTION
 aa254b7b892efd370484c88cf37f6131 *NAMESPACE
 6a2d910fc43645075fe551c79e60e948 *R/FCP_TPA.R
 02614632eb5a55407c5822e5c520033b *R/MFPCA_calculation.R
@@ -7,8 +7,8 @@ c5eecdbd28661122449dca0ff33228a1 *R/univDecomp.R
 3da1696d13e10aa8825d0cdbcea4ed43 *R/univPCA.R
 5aa9100968a828efbea35996fa77fdac *R/univariateExpansions.R
 0adf53813ef07c34709a4c01dc587fd9 *cleanup
-acf2ded768519ce1203a4a826e0ed8df *configure
 7c273b067553ab3c2810b3a4cb61434c *configure.ac
+c203273cd54b095f928e7d59c0b00155 *inst/CITATION
 ae0bbf1e095e0889f0b98352ed6fdb1c *man/FCP_TPA.Rd
 cf383ca165b14f52cac7f4e5a15befaa *man/MFPCA.Rd
 0111b08b7f6e7a6b5296f188c7467de7 *man/PACE.Rd
@@ -44,5 +44,5 @@ a93f83a57bb4d5696f5e115d78d24516 *man/univExpansion.Rd
 fe92519d1cece5d87265cfe1862d26d5 *tests/testthat/test_FCP_TPA.R
 690b185b8001667a14bda9d5625c5e06 *tests/testthat/test_MFPCA_calculation.R
 d5627d157efaf400ff0408ff95cc30b3 *tests/testthat/test_fftw.R
-ffae6bec600b727979063978d2371820 *tests/testthat/test_univDecomp.R
-46e4323da0dd630ab10b8df82a005a19 *tests/testthat/test_univExpansion.R
+af0090936706b03fe721ccea9dfbf233 *tests/testthat/test_univDecomp.R
+f058e0d4349c76fa79c7392798abcd19 *tests/testthat/test_univExpansion.R
