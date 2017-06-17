@@ -112,6 +112,10 @@ univDecomp <- function(type, funDataObject, ...)
 #' @param makePD Logical: should positive definiteness be enforced for the 
 #'   covariance surface estimate? Defaults to \code{FALSE} (cf. 
 #'   \code{\link[refund]{fpca.sc}}).
+#' @param cov.weight.type The type of weighting used for the smooth covariance
+#'   estimate in \code{\link{PACE}}. Defaults to \code{"none"}, i.e. no weighting. Alternatively, 
+#'   \code{"counts"} (corresponds to \code{\link[refund]{fpca.sc}} ) weights the pointwise estimates of the covariance function
+#'   by the number of observation points.
 #'   
 #' @return \item{scores}{A matrix of scores (coefficients) with dimension 
 #'   \code{N x K}, reflecting the weights for each principal component in each 
@@ -143,9 +147,9 @@ univDecomp <- function(type, funDataObject, ...)
 #'      main = "Estimated eigenfunctions\n(flipped)")
 #' 
 #' par(oldpar)
-fpcaBasis <- function(funDataObject, nbasis = 10, pve = 0.99, npc = NULL, makePD = FALSE)
+fpcaBasis <- function(funDataObject, nbasis = 10, pve = 0.99, npc = NULL, makePD = FALSE, cov.weight.type = "none")
 {
-  FPCA <- PACE(funDataObject, predData = NULL, nbasis, pve, npc, makePD)
+  FPCA <- PACE(funDataObject, predData = NULL, nbasis, pve, npc, makePD, cov.weight.type)
   
   return(list(scores = FPCA$scores,
               ortho = TRUE,
@@ -264,49 +268,57 @@ makeDiffOp <- function(degree, dim){
 }
 
 
-#' Calculate a smooth PCA representaion for functional data on two-dimensional 
-#' domains
-#' 
-#' This function calculates a smooth PCA representation based on the FCP_TPA 
-#' algorithm (see References) for functional data on two-dimensional domains. In
-#' this case, the data can be interpreted as images with \code{S1 x S2} pixels 
-#' (assuming \code{nObsPoints(funDataObject) = (S1, S2)}), i.e. the total data 
-#' for \code{N} observations can be represented as third order tensor of 
-#' dimension \code{N x S1 x S2}.
-#' 
-#' The smooth PCA of the tensor data is calculated via the \code{\link{FCP_TPA}}
-#' function. Smoothness is induced by difference penalty matrices for both 
-#' directions of the images, weighted by smoothing parameters \eqn{\alpha_v, 
-#' \alpha_w}. The resulting eigenvectors can be interpreted in terms of 
-#' eigenfunctions and individual scores for each observation. See 
-#' \code{\link{FCP_TPA}} for details.
-#' 
-#' @param funDataObject An object of class \code{\link[funData]{funData}} 
-#'   containing the observed functional data samples (here: images) for which 
-#'   the smooth PCA is to be calculated.
-#' @param npc An integer, giving the number of principal components to be 
-#'   calculated.
-#' @param smoothingDegree A numeric vector of length 2, specifying the degree of
-#'   the difference penalties inducing smoothness in both directions of the 
-#'   image. Defaults to \code{2} for each direction (2nd differences).
-#' @param alphaRange A list of length 2 with entries \code{v} and \code{w} 
-#'   containing the range of smoothness parameters to test for each direction.
-#'   
-#' @return \item{scores}{A matrix of scores (coefficients) with dimension 
-#'   \code{N x K}, reflecting the weights for principal component in each 
-#'   observation.}  \item{B}{A matrix containing the scalar product of all pairs
-#'   of basis functions.} \item{ortho}{Logical, set to \code{FALSE}, as basis 
-#'   functions are not orthonormal.} \item{functions}{A functional data object, 
-#'   representing the functional principal component basis functions.}
-#'   
-#' @seealso \code{\link{univDecomp}}, \code{\link{FCP_TPA}}
-#'   
-#' @references G. I. Allen, "Multi-way Functional Principal Components 
-#'   Analysis", In IEEE International Workshop on Computational Advances in 
-#'   Multi-Sensor Adaptive Processing, 2013.
-#'   
-#' @export fcptpaBasis
-#'   
+#'Calculate a smooth PCA representation for functional data on two-dimensional 
+#'domains
+#'
+#'This function calculates a smooth PCA representation based on the FCP_TPA 
+#'algorithm (see References) for functional data on two-dimensional domains. In 
+#'this case, the data can be interpreted as images with \code{S1 x S2} pixels 
+#'(assuming \code{nObsPoints(funDataObject) = (S1, S2)}), i.e. the total data 
+#'for \code{N} observations can be represented as third order tensor of 
+#'dimension \code{N x S1 x S2}.
+#'
+#'The smooth PCA of the tensor data is calculated via the \code{\link{FCP_TPA}} 
+#'function. Smoothness is induced by difference penalty matrices for both 
+#'directions of the images, weighted by smoothing parameters \eqn{\alpha_v, 
+#'\alpha_w}. The resulting eigenvectors can be interpreted in terms of 
+#'eigenfunctions and individual scores for each observation. See 
+#'\code{\link{FCP_TPA}} for details.
+#'
+#'@param funDataObject An object of class \code{\link[funData]{funData}} 
+#'  containing the observed functional data samples (here: images) for which the
+#'  smooth PCA is to be calculated.
+#'@param npc An integer, giving the number of principal components to be 
+#'  calculated.
+#'@param smoothingDegree A numeric vector of length 2, specifying the degree of 
+#'  the difference penalties inducing smoothness in both directions of the 
+#'  image. Defaults to \code{2} for each direction (2nd differences).
+#'@param alphaRange A list of length 2 with entries \code{v} and \code{w} 
+#'  containing the range of smoothness parameters to test for each direction.
+#'@param orderValues Logical. If \code{TRUE}, the eigenvalues are ordered
+#'  decreasingly, together with their associated eigenimages and scores.
+#'  Defaults to \code{TRUE}.
+#'@param normalize Logical. If \code{TRUE} the eigenfunctions are normalized to 
+#'  have norm 1. Defaults to \code{FALSE}.
+#'  
+#'@return \item{scores}{A matrix of scores (coefficients) with dimension \code{N
+#'  x npc}, reflecting the weights for principal component in each observation.}
+#'  \item{B}{A matrix containing the scalar product of all pairs of basis 
+#'  functions.} \item{ortho}{Logical, indicating whether the eigenfunctions are 
+#'  orthonormal. Set to \code{normalize}, as this influences whether a 
+#'  normalization is done or not.} \item{functions}{A functional data object, 
+#'  representing the functional principal component basis functions.} 
+#'  \item{values}{A vector of length \code{npc}, containing the eigenvalues in 
+#'  decreasing order.}
+#'  
+#'@seealso \code{\link{univDecomp}}, \code{\link{FCP_TPA}}
+#'  
+#'@references G. I. Allen, "Multi-way Functional Principal Components Analysis",
+#'  In IEEE International Workshop on Computational Advances in Multi-Sensor 
+#'  Adaptive Processing, 2013.
+#'  
+#'@export fcptpaBasis
+#'  
 #' @examples
 #' # simulate image data for N = 100 observations
 #' N <- 100
@@ -328,7 +340,7 @@ makeDiffOp <- function(degree, dim){
 #' plot(fcptpa$functions, obs = i, main = paste("Basis function", i)) # plot first basis function
 #' 
 #' par(oldpar)}
-fcptpaBasis <- function(funDataObject, npc, smoothingDegree = rep(2,2), alphaRange)
+fcptpaBasis <- function(funDataObject, npc, smoothingDegree = rep(2,2), alphaRange, orderValues = TRUE, normalize = FALSE)
 {
   if(dimSupp(funDataObject) != 2)
     stop("FCP_TPA is implemented for (2D) image data only!")
@@ -341,18 +353,47 @@ fcptpaBasis <- function(funDataObject, npc, smoothingDegree = rep(2,2), alphaRan
   
   pca <-  FCP_TPA(X = funDataObject@X, K = npc, penMat = list(v = Dv, w = Dw), alphaRange = alphaRange)
     
-  # reconstruct eigenimages and scores from FCP_TPA result
-  eigenImages <- array(NA, c(npc, d[-1]))
+  # reconstruct eigenimages, values and scores from FCP_TPA result
+  eigenImages <- sapply(1:npc, function(i){pca$V[,i] %o% pca$W[,i]}, simplify = "array")
+  functions <- funData(argvals = funDataObject@argvals, X = aperm(eigenImages, perm = c(3,1,2)))
   
-  for(i in 1:npc)
-    eigenImages[i,,] <-  pca$V[,i] %o% pca$W[,i]
+  values <- sapply(1:npc, 
+                   function(m){crossprod(MFPCA::ttv(funDataObject@X, list(pca$V[,m], pca$W[,m]), dim = c(2,3)))/ nObs(funDataObject)}) 
   
-  scores <-  sweep(pca$U,MARGIN=2,pca$d,`*`)
+  scores <-  sweep(pca$U, MARGIN=2, pca$d, "*")
+  
+  # make orthonormal eigenfunctions
+  if(normalize)
+  {
+    norms <- norm(functions, squared = FALSE)
+    
+    # calculate normalized values
+    values <- values * norms^2
+    
+    # re-order and normalize scores and eigenfunctions
+    scores <- sweep(scores, MARGIN = 2, norms, "/") # divide columns by norms
+    B <- NULL
+    functions@X <- sweep(functions@X, MARGIN = 1, norms, "/") # divide "rows" by norms
+  }
+  else # calculate scalar products between basis functions
+    B <- calcBasisIntegrals(functions@X, dimSupp(funDataObject), funDataObject@argvals)
+  
+  if(orderValues)
+  {
+    # ordering of non-normalized eigenvalues
+    ord <- order(values, decreasing = TRUE)
+    
+    # re-order scores, eigenfunctions and values
+    scores <- scores[, ord]
+    functions@X <- functions@X[ord, , , drop = FALSE]
+    values <- values[ord]
+  }
   
   return(list(scores = scores,
-              B = calcBasisIntegrals(eigenImages, dimSupp(funDataObject), funDataObject@argvals),
-              ortho = FALSE,
-              functions = funData(argvals = funDataObject@argvals, X = eigenImages)))
+              B = B,
+              ortho = normalize, # If normalize = TRUE, functions are (ortho)normalized
+              functions = functions,
+              values = values))
 }
 
 
@@ -708,10 +749,6 @@ splineBasis2Dpen <- function(funDataObject, bs = "ps", m = NA, k = -1, parallel 
 #'   
 #' @seealso \code{\link{univDecomp}}, \code{\link{dct2D}}, \code{\link{dct3D}}
 #'   
-#' @importFrom foreach %do%
-#' @importFrom foreach %dopar%
-#' @importFrom Matrix sparseMatrix
-#'   
 #' @export dctBasis2D
 #'   
 #' @examples
@@ -735,20 +772,13 @@ dctBasis2D <- function(funDataObject, qThresh, parallel = FALSE)
   if(dimSupp(funDataObject) != 2)
     stop("dctBasis2D can handle only functional data on two-dimensional domains.")
   
-  if(parallel)
-    res <- foreach::foreach(i = 1:nObs(funDataObject), .combine = "rbind") %dopar% {
-      dct <- dct2D(funDataObject@X[i,,], qThresh)
-      
-      data.frame(i = rep(i, length(dct$ind)), j = dct$ind, x = dct$val)
-    }
-  else
-    res <- foreach::foreach(i = 1:nObs(funDataObject), .combine = "rbind") %do% {
-      dct <- dct2D(funDataObject@X[i,,], qThresh)
-      
-      data.frame(i = rep(i, length(dct$ind)), j = dct$ind, x = dct$val)
-    }
+  res <- plyr::ldply(1:nObs(funDataObject), 
+                     .fun = function(i, img){dct <- dct2D(img[i,,], qThresh)
+                                             data.frame(i = rep(i, length(dct$ind)), j = dct$ind, x = dct$val)},
+                     img = funDataObject@X,
+                     .parallel = parallel)
   
-  return(list(scores = sparseMatrix(i = res$i, j = res$j, x = res$x),
+  return(list(scores = Matrix::sparseMatrix(i = res$i, j = res$j, x = res$x),
               B = Matrix::Diagonal(n = max(res$j), x = prod(sapply(funDataObject@argvals, function(l){diff(range(l))}))/pi^2),
               ortho = FALSE,
               functions = NULL
@@ -779,7 +809,7 @@ dctBasis2D <- function(funDataObject, qThresh, parallel = FALSE)
 #' 
 #' @importFrom stats quantile
 #'
-#' @useDynLib MFPCA calcCoefs
+#' @useDynLib MFPCA, .registration = TRUE
 #'
 #' @keywords internal
 dct2D <- function(image, qThresh)
@@ -802,22 +832,15 @@ dct2D <- function(image, qThresh)
 dctBasis3D <- function(funDataObject, qThresh, parallel = FALSE)
 {
   if(dimSupp(funDataObject) != 3)
-    stop("dctBasis2D can handle only functional data on three-dimensional domains.")
+    stop("dctBasis3D can handle only functional data on three-dimensional domains.")
   
-  if(parallel)
-    res <- foreach::foreach(i = 1:nObs(funDataObject), .combine = "rbind") %dopar% {
-      dct <- dct3D(funDataObject@X[i,,,], qThresh)
-      
-      data.frame(i = rep(i, length(dct$ind)), j = dct$ind, x = dct$val)
-    }
-  else
-    res <- foreach::foreach(i = 1:nObs(funDataObject), .combine = "rbind") %do% {
-      dct <- dct3D(funDataObject@X[i,,,], qThresh)
-      
-      data.frame(i = rep(i, length(dct$ind)), j = dct$ind, x = dct$val)
-    }
+  res <- plyr::ldply(1:nObs(funDataObject), 
+                     .fun = function(i, img){dct <- dct3D(img[i,,,], qThresh)
+                                             data.frame(i = rep(i, length(dct$ind)), j = dct$ind, x = dct$val)},
+                     img = funDataObject@X,
+                     .parallel = parallel)
   
-  return(list(scores = sparseMatrix(i = res$i, j = res$j, x = res$x),
+  return(list(scores = Matrix::sparseMatrix(i = res$i, j = res$j, x = res$x),
               B = Matrix::Diagonal(n = max(res$j), x = prod(sapply(funDataObject@argvals, function(l){diff(range(l))}))/pi^3),
               ortho = FALSE,
               functions = NULL
@@ -848,7 +871,7 @@ dctBasis3D <- function(funDataObject, qThresh, parallel = FALSE)
 #' 
 #' @importFrom stats quantile
 #'
-#' @useDynLib MFPCA calcCoefs3D
+#' @useDynLib MFPCA, .registration = TRUE
 #'
 #' @keywords internal
 dct3D <- function(image, qThresh)

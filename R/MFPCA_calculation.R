@@ -87,23 +87,27 @@ calcBasisIntegrals <- function(basisFunctions, dimSupp, argvals)
 #' t}{<<f,g>>_w = \sum_{j = 1}^p w_j \int_\calT_j f^(j)(t) g^(j)(t) d t} and the
 #' corresponding weighted covariance operator \eqn{\Gamma_w}.}
 #' 
-#' \subsection{Pointwise bootstrap confidence bands}{If \code{bootstrap = TRUE},
-#' pointwise bootstrap confidence bands are generated for the multivariate 
-#' functional principal components \eqn{\hat \psi_1, \ldots, \hat \psi_M}{\hat 
-#' \psi_1, \ldots, \hat \psi_M}. The parameter \code{nBootstrap} gives the 
-#' number of bootstrap iterations. In each iteration, the observations are 
-#' resampled on the level of (multivariate) functions and the whole MFPCA is 
-#' recalculated. In particular, if the univariate basis depends on the data 
-#' (FPCA approaches), basis functions and scores are both re-estimated. If the 
-#' basis functions are fixed (e.g. splines), the scores form the original 
-#' estimate are used to speed up the calculations. The confidence bands are 
-#' calculated separately for each element as pointwise percentile bootstrap 
-#' confidence intervals. The significance level(s) can be defined by the 
-#' \code{bootstrapAlpha} parameter, which defaults to 5\%. As a result, the 
-#' \code{MFPCA} function returns a list \code{CI} of the same length as 
-#' \code{bootstrapAlpha}, containing the lower and upper bounds of the 
-#' confidence bands as \code{multiFunData} objects of the same structure as 
-#' \code{mFData}.}
+#' \subsection{Bootstrap}{If \code{bootstrap = TRUE}, pointwise bootstrap 
+#' confidence bands are generated for the multivariate eigenvalues \eqn{\hat 
+#' \nu_1, \ldots, \hat \nu_M } as well as for multivariate functional principal 
+#' components \eqn{\hat \psi_1, \ldots, \hat \psi_M}{\hat \psi_1, \ldots, \hat 
+#' \psi_M}. The parameter \code{nBootstrap} gives the number of bootstrap 
+#' iterations. In each iteration, the observations are resampled on the level of
+#' (multivariate) functions and the whole MFPCA is recalculated. In particular, 
+#' if the univariate basis depends on the data (FPCA approaches), basis 
+#' functions and scores are both re-estimated. If the basis functions are fixed 
+#' (e.g. splines), the scores from the original estimate are used to speed up 
+#' the calculations. The confidence bands for the eigenfunctions are calculated 
+#' separately for each element as pointwise percentile bootstrap confidence 
+#' intervals. Analogously, the confidence bands for the eigenvalues are also 
+#' percentile bootstrap confidence bands. The significance level(s) can be 
+#' defined by the \code{bootstrapAlpha} parameter, which defaults to 5\%. As a 
+#' result, the \code{MFPCA} function returns a list \code{CI} of the same length
+#' as \code{bootstrapAlpha}, containing the lower and upper bounds of the 
+#' confidence bands for the principal components as \code{multiFunData} objects 
+#' of the same structure as \code{mFData}. The confidence bands for the 
+#' eigenvalues are returned in a list \code{CIvalues}, containing the upper and 
+#' lower bounds for each significance level.}
 #' 
 #' 
 #' \subsection{Univariate Expansions}{The multivariate functional principal 
@@ -126,7 +130,7 @@ calcBasisIntegrals <- function(basisFunctions, dimSupp, argvals)
 #' \code{bs,m,k} are passed to the functions \code{\link{univDecomp}} and 
 #' \code{\link{univExpansion}}. For two-dimensional tensor product splines, use 
 #' \code{type = "splines2D"}. \item Spline basis functions (with smoothness 
-#' penalty). Then \code{uniExpansions[[j]] = list(type = "splines1DPen", bs, m, 
+#' penalty). Then \code{uniExpansions[[j]] = list(type = "splines1Dpen", bs, m, 
 #' k)}, where \code{bs,m,k} are passed to the functions \code{\link{univDecomp}}
 #' and \code{\link{univExpansion}}. Analogously to the unpenalized case, use 
 #' \code{type = "splines2Dpen"} for 2D penalized tensor product splines. \item 
@@ -153,10 +157,10 @@ calcBasisIntegrals <- function(basisFunctions, dimSupp, argvals)
 #'   eigenfunctions.
 #' @param approx.eigen Logical. If \code{TRUE}, the eigenanalysis problem for 
 #'   the estimated covariance matrix is solved approximately using the 
-#'   \pkg{irlba} package, which is much faster. If the number \code{M} of
+#'   \pkg{irlba} package, which is much faster. If the number \code{M} of 
 #'   eigenvalues to calculate is high with respect to the number of observations
-#'   in \code{mFData} or the number of estimated univariate eigenfunctions, the
-#'   approximation may be inappropriate. In this case, approx.eigen is set to
+#'   in \code{mFData} or the number of estimated univariate eigenfunctions, the 
+#'   approximation may be inappropriate. In this case, approx.eigen is set to 
 #'   \code{FALSE} and the function throws a warning. Defaults to \code{FALSE}.
 #' @param bootstrap Logical. If \code{TRUE}, pointwise bootstrap confidence 
 #'   bands are calculated for the multivariate functional principal components. 
@@ -165,6 +169,13 @@ calcBasisIntegrals <- function(basisFunctions, dimSupp, argvals)
 #'   \code{NULL}, which leads to an error, if \code{bootstrap = TRUE}.
 #' @param bootstrapAlpha A vector of numerics (or a single number) giving the 
 #'   significance level for bootstrap intervals. Defaults to \code{0.05}.
+#' @param bootstrapStrat A stratification variable for bootstrap. Must be a 
+#'   factor of length \code{nObs(mFData)} or \code{NULL} (default). If 
+#'   \code{NULL}, no stratification is made in the bootstrap resampling, i.e. 
+#'   the curves are sampled with replacement. If \code{bootstrapStrat} is not 
+#'   \code{NULL}, the curves are resampled with replacement within the groups 
+#'   defined by \code{bootstrapStrat}, hence keeping the group proportions 
+#'   fixed.
 #' @param verbose Logical. If \code{TRUE}, the function reports 
 #'   extra-information about the progress (incl. timestamps). Defaults to 
 #'   \code{options()$verbose}.
@@ -174,24 +185,33 @@ calcBasisIntegrals <- function(basisFunctions, dimSupp, argvals)
 #'   \code{\link[funData]{multiFunData}} object containing the estimated 
 #'   multivariate functional principal components \eqn{\hat \psi_1, \ldots, \hat
 #'   \psi_M}.} \item{scores}{ A matrix of dimension \code{N x M} containing the 
-#'   estimated scores \eqn{\hat \rho_{im}}.} \item{meanFunction}{A multivariate 
-#'   functional data object, corresponding to the mean function. The MFPCA is 
-#'   applied to the de-meaned functions in \code{mFData}.}\item{fit}{A 
+#'   estimated scores \eqn{\hat \rho_{im}}.} \item{vectors}{A matrix
+#'   representing the eigenvectors associated with the combined univariate score
+#'   vectors. This might be helpful for calculating predictions.}
+#'   \item{normFactors}{The normalizing factors used for calculating the
+#'   multivariate eigenfunctions and scores. This might be helpful when
+#'   calculation predictions.} \item{meanFunction}{A multivariate functional
+#'   data object, corresponding to the mean function. The MFPCA is applied to
+#'   the de-meaned functions in \code{mFData}.}\item{fit}{A 
 #'   \code{\link[funData]{multiFunData}} object containing estimated 
 #'   trajectories for each observation based on the truncated Karhunen-Loeve 
 #'   representation and the estimated scores and eigenfunctions.} \item{CI}{A 
 #'   list of the same length as \code{bootstrapAlpha}, containing the pointwise 
-#'   lower and upper bootstrap confidence bands for each significance level in 
-#'   form of \code{\link[funData]{multiFunData}} objects (only if 
+#'   lower and upper bootstrap confidence bands for each eigenfunction and each 
+#'   significance level in form of \code{\link[funData]{multiFunData}} objects 
+#'   (only if \code{bootstrap = TRUE}).} \item{CIvalues}{A list of the same 
+#'   length as \code{bootstrapAlpha}, containing the lower and upper bootstrap 
+#'   confidence bands for each eigenvalue and each significance level (only if 
 #'   \code{bootstrap = TRUE}).}
 #'   
 #' @export MFPCA
 #'   
 #' @importFrom foreach %do%
 #'   
-#' @references C. Happ, S. Greven (2015): Multivariate Functional Principal 
+#' @references C. Happ, S. Greven (2016+):Multivariate Functional Principal 
 #'   Component Analysis for Data Observed on Different (Dimensional) Domains. 
-#'   Preprint on arXiv: \url{http://arxiv.org/abs/1509.02029}
+#'   Journal of the American Statistical Association, to appear. DOI: 
+#'   \url{http://dx.doi.org/10.1080/01621459.2016.1273115}
 #'   
 #' @seealso \code{\link[funData]{multiFunData}}, \code{\link{PACE}}, 
 #'   \code{\link{univDecomp}}, \code{\link{univExpansion}}
@@ -257,6 +277,16 @@ calcBasisIntegrals <- function(basisFunctions, dimSupp, argvals)
 #' plot(splinesBoot$CI$alpha_0.1$upper[[2]], lty = 3, add = TRUE)
 #' abline(h = 0, col = "gray")
 #' legend("topleft", c("Estimate", "95% CI", "90% CI"), lty = 1:3, lwd = c(2,1,1))
+#' 
+#' # Plot 95% confidence bands for eigenvalues
+#' plot(1:2, splinesBoot$values, pch = 20, ylim = c(0, 1.5), 
+#'      main = "Estimated eigenvalues with 95% CI",
+#'      xlab = "Eigenvalue no.", ylab = "")
+#' arrows(1:2, splinesBoot$CIvalues$alpha_0.05$lower,
+#'        1:2, splinesBoot$CIvalues$alpha_0.05$upper,
+#'        length = 0.05, angle = 90, code = 3)
+#' points(1:2, sim$trueVals[1:2], pch = 20, col = 4)
+#' legend("topright", c("Estimate", "True value"), pch = 20, col = c(1,4))
 #' }
 #' 
 #' ### simulate data (two- and one-dimensional domains)
@@ -290,7 +320,8 @@ calcBasisIntegrals <- function(basisFunctions, dimSupp, argvals)
 #' }
 #' par(oldPar)
 MFPCA <- function(mFData, M, uniExpansions, weights = rep(1, length(mFData)), fit = FALSE, approx.eigen = FALSE,
-                  bootstrap = FALSE, nBootstrap = NULL, bootstrapAlpha = 0.05, verbose = options()$verbose)
+                  bootstrap = FALSE, nBootstrap = NULL, bootstrapAlpha = 0.05, bootstrapStrat = NULL, 
+                  verbose = options()$verbose)
 {
   # number of components
   p <- length(mFData)
@@ -309,6 +340,14 @@ MFPCA <- function(mFData, M, uniExpansions, weights = rep(1, length(mFData)), fi
     if(any(!(0 < bootstrapAlpha & bootstrapAlpha < 1)))
       stop("Significance level for bootstrap confidence bands must be in (0,1).")
 
+    if(!is.null(bootstrapStrat))
+    {
+      if(!is.factor(bootstrapStrat))
+        stop("bootstrapStrat must be either NULL or a factor.")
+      
+      if(length(bootstrapStrat) != nObs(mFData))
+        stop("bootstrapStrat must have the same length as the number of observations in the mFData object.")
+    }
   }
   
   # dimension for each component
@@ -385,6 +424,8 @@ MFPCA <- function(mFData, M, uniExpansions, weights = rep(1, length(mFData)), fi
 
     for(j in 1:p)
       booteFuns[[j]] <- array(NA, dim  = c(nBootstrap, M, sapply(mFData[[j]]@argvals, length)))
+    
+    booteVals <- matrix(NA, nrow = nBootstrap, ncol = M)
 
     for(n in 1:nBootstrap)
     {
@@ -394,7 +435,10 @@ MFPCA <- function(mFData, M, uniExpansions, weights = rep(1, length(mFData)), fi
           cat("\t n = ", n, " (", format(Sys.time(), "%T"), ")\n", sep = "")
       }
 
-      bootObs <- sample(N, replace = TRUE)
+      if(is.null(bootstrapStrat))
+        bootObs <- sample(N, replace = TRUE)
+      else
+        bootObs <- stratSample(bootstrapStrat)
 
       bootBasis <- vector("list", p)
 
@@ -419,11 +463,14 @@ MFPCA <- function(mFData, M, uniExpansions, weights = rep(1, length(mFData)), fi
         stop("Function MFPCA (bootstrap): total number of univariate basis functions must be greater or equal M!")
 
       # calculate MFPCA for bootstrap sample (Bchol has been updated for UMPCA)
-      tmpFuns <- calcMFPCA(N = N, p = p, Bchol = Bchol, M = M, type = type, weights = weights,
-                           npc = npcBoot, argvals = getArgvals(mFData), uniBasis = bootBasis, fit = FALSE, approx.eigen = approx.eigen)$functions
+      bootMFPCA <- calcMFPCA(N = N, p = p, Bchol = Bchol, M = M, type = type, weights = weights,
+                           npc = npcBoot, argvals = getArgvals(mFData), uniBasis = bootBasis, fit = FALSE, approx.eigen = approx.eigen)
 
+      # save eigenvalues
+      booteVals[n,] <- bootMFPCA$values
+      
       # flip bootstrap estimates if necessary
-      tmpFuns <- flipFuns(res$functions, tmpFuns)
+      tmpFuns <- flipFuns(res$functions, bootMFPCA$functions)
 
       # save in booteFuns
       for(j in 1:p)
@@ -437,13 +484,18 @@ MFPCA <- function(mFData, M, uniExpansions, weights = rep(1, length(mFData)), fi
       }
     }
 
+    CIvalues <- vector("list", length(bootstrapAlpha))
     CI <- vector("list", length(bootstrapAlpha))
-
+   
     for(alpha in 1:length(bootstrapAlpha))
     {
       if(verbose)
         cat("Calculating bootstrap quantiles for alpha = ", bootstrapAlpha[alpha], " (", format(Sys.time(), "%T"), ")\n", sep = "")
 
+      CIvalues[[alpha]]$lower <- apply(booteVals, 2, quantile, bootstrapAlpha[alpha]/2)
+      CIvalues[[alpha]]$upper <-  apply(booteVals, 2, quantile, 1 - bootstrapAlpha[alpha]/2)
+      names(CIvalues)[alpha] <- paste("alpha", bootstrapAlpha[alpha], sep = "_")
+      
       bootCI_lower <- bootCI_upper <-  vector("list", p)
       for(j in 1:p)
       {
@@ -458,6 +510,8 @@ MFPCA <- function(mFData, M, uniExpansions, weights = rep(1, length(mFData)), fi
 
       names(CI)[alpha] <- paste("alpha", bootstrapAlpha[alpha], sep = "_")
     }
+    
+    res$CIvalues <- CIvalues
 
     res$CI <- CI
   }
@@ -497,7 +551,7 @@ calcMFPCA <- function(N, p, Bchol, M, type, weights, npc, argvals, uniBasis, fit
   {
     if(approx.eigen)
     {
-      tmpSVD <- irlba::irlba(Z, nv = M)
+      tmpSVD <- irlba::irlba(as.matrix(Z), nv = M)
 
       vectors <- tmpSVD$v
       values <- tmpSVD$d[1:M]^2
@@ -517,7 +571,7 @@ calcMFPCA <- function(N, p, Bchol, M, type, weights, npc, argvals, uniBasis, fit
   {
     if(approx.eigen)
     {
-      tmpSVD <- irlba::irlba(Matrix::tcrossprod(Z, Bchol), nv = M)
+      tmpSVD <- irlba::irlba(as.matrix(Matrix::tcrossprod(Z, Bchol)), nv = M)
 
       vectors <- Matrix::crossprod(Bchol, tmpSVD$v)
       values <- tmpSVD$d[1:M]^2
@@ -555,7 +609,9 @@ calcMFPCA <- function(N, p, Bchol, M, type, weights, npc, argvals, uniBasis, fit
 
   res <- list(values = values,
               functions = multiFunData(eFunctions),
-              scores = scores)
+              scores = scores,
+              vectors = vectors,
+              normFactors = normFactors)
 
   if(fit)
   {

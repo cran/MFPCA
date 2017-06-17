@@ -56,6 +56,9 @@ test_that("PACE function", {
   set.seed(1)
   f1 <- simFunData(seq(0,1,0.01), M = 10, eFunType = "Poly", eValType = "linear", N = 10)$simData
   
+  expect_error(PACE(f1, predData = extractObs(f1, argvals = seq(0,0.5, 0.01))),
+               "PACE: funDataObject and predData must be defined on the same domains!")
+  
   # see also 1D decompositions, fpcaBasis
   pca1D <- PACE(f1, pve = 0.95)
   expect_equal(pca1D$npc, 5)
@@ -70,6 +73,38 @@ test_that("PACE function", {
   expect_equal(sum(pca1D$values), 3.77553890)
   expect_equal(pca1D$values[1], 1.35690262)
   expect_equal(pca1D$sigma2, 0.0131059337)
+  
+  pcaPD <- PACE(f1, pve = 0.95, makePD = TRUE)
+  expect_equal(pcaPD$npc, 5)
+  expect_equal(nObs(pcaPD$fit), 10)
+  expect_equal(mean(norm(pcaPD$fit)), 4.4173401)
+  expect_equal(dim(pcaPD$scores), c(10,5))
+  expect_equal(mean(abs(pcaPD$scores)), 0.71487472)
+  expect_equal(nObs(pcaPD$mu), 1)
+  expect_equal(norm(pcaPD$mu), 0.54801585)
+  expect_equal(nObs(pcaPD$functions), 5)
+  expect_equal(norm(pcaPD$functions), rep(1,5))
+  expect_equal(sum(pcaPD$values), 3.7756738)
+  expect_equal(pcaPD$values[1], 1.35694146)
+  expect_equal(pcaPD$sigma2, 0.011018331)
+  
+  # test also for irregular data
+  f1sparse <- sparsify(f1, minObs=  20, maxObs = 50)
+  i1 <- irregFunData(argvals = apply(f1sparse@X,1, function(x){f1sparse@argvals[[1]][which(!is.na(x))]}), X = apply(f1sparse@X, 1, na.omit))
+  
+  pca1Dirreg <- PACE(i1, pve = 0.95)
+  expect_equal(pca1Dirreg$npc, 5)
+  expect_equal(nObs(pca1Dirreg$fit), 10)
+  expect_equal(mean(norm(pca1Dirreg$fit)), 4.2779322)
+  expect_equal(dim(pca1Dirreg$scores), c(10,5))
+  expect_equal(mean(abs(pca1Dirreg$scores)), 0.63885727)
+  expect_equal(nObs(pca1Dirreg$mu), 1)
+  expect_equal(norm(pca1Dirreg$mu), 0.72933293)
+  expect_equal(nObs(pca1Dirreg$functions), 5)
+  expect_equal(norm(pca1Dirreg$functions), rep(1,5))
+  expect_equal(sum(pca1Dirreg$values), 4.0822808)
+  expect_equal(pca1Dirreg$values[1], 1.8022939)
+  expect_equal(pca1Dirreg$sigma2, 0)
 })
 
 test_that("test UMPCA functionality", {
@@ -157,6 +192,17 @@ test_that("test univariate decompositions 2D", {
   expect_equal(sum(fcptpa2D$B), 0.00213955703)
   expect_equal(nObs(fcptpa2D$functions), 4)
   expect_equal(norm(fcptpa2D$functions)[1], 0.000520573393)
+  expect_equal(fcptpa2D$values[1], 643.5194)
+  expect_equal(sum(fcptpa2D$values), 658.5576, tolerance = 1e-6)
+  
+  set.seed(2)
+  fcptpa2Dnorm <- MFPCA:::fcptpaBasis(f2, npc = 4, alphaRange = list(v = c(1e-4, 1e4), w = c(1e-4, 1e4)), normalize = TRUE)
+  expect_equal(mean(fcptpa2Dnorm$scores), -278.1599, tolerance = 1e-6) 
+  expect_true(fcptpa2Dnorm$ortho)
+  expect_null(fcptpa2Dnorm$B)
+  expect_equal(norm(fcptpa2Dnorm$functions), rep(1, nObs(fcptpa2Dnorm$functions)))
+  expect_equal(fcptpa2Dnorm$values[1],  0.33499908)
+  expect_equal(sum(fcptpa2Dnorm$values), 0.342610553)
   
   # wrapper function
   decompSpline2D <- MFPCA:::univDecomp(type = "splines2D", funDataObject = f2, bs = "ps", m = c(2,3), k = c(8,10))
@@ -171,4 +217,8 @@ test_that("test univariate decompositions 2D", {
   set.seed(2)
   decompFCPTPA2D <- MFPCA:::univDecomp(type = "FCP_TPA", funDataObject = f2, npc = 4, alphaRange = list(v = c(1e-4, 1e4), w = c(1e-4, 1e4)))
   expect_equal(decompFCPTPA2D, fcptpa2D)
+  
+  set.seed(2)
+  decompFCPTPA2Dnorm <- MFPCA:::univDecomp(type = "FCP_TPA", funDataObject = f2, npc = 4, alphaRange = list(v = c(1e-4, 1e4), w = c(1e-4, 1e4)), normalize = TRUE)
+  expect_equal(decompFCPTPA2Dnorm, fcptpa2Dnorm)
 })

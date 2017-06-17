@@ -46,8 +46,11 @@ test_that("test univariate expansions 2D", {
                                        functions = tensorProduct(funData:::efPoly(argvals[[1]], M = 5), funData:::efWiener(argvals[[2]], M = 5)))
   expect_equal(nObs(default2D), 20)
   expect_equal(nObsPoints(default2D), c(101,101))
-  expect_equal(mean(norm(default2D)),  10.2855118) 
-  expect_equal(norm(default2D)[1], 12.0950688)
+  if(packageVersion("funData") != "1.0") # in 1.0, the tensor product was defined differently
+  {
+    expect_equal(mean(norm(default2D)),   10.2717312) 
+    expect_equal(norm(default2D)[1], 12.0851797)
+  }
   
   spline2D <- MFPCA:::splineFunction2D(scores = scores, argvals = argvals, bs = "ps", m = 3, k = 5)
   expect_equal(nObs(spline2D), 20)
@@ -58,8 +61,8 @@ test_that("test univariate expansions 2D", {
   spline2Dpen <- MFPCA:::splineFunction2Dpen(scores = scores, argvals = argvals, bs = "ps", m = 3, k = 5)
   expect_equal(nObs(spline2Dpen), 20)
   expect_equal(nObsPoints(spline2Dpen), c(101,101))
-  if(.Platform$endian == "big")
-    skip("Regression tests for spline2Dpen skipped on this architecture (big endian).")
+  if(.Platform$endian == "big" | .Machine$sizeof.longdouble == 0)
+    skip("Regression tests for spline2Dpen skipped on this architecture.")
   else
   {
     expect_equal(mean(norm(spline2Dpen)),  2.80048833) 
@@ -98,13 +101,33 @@ test_that("test univariate expansions 3D", {
                                                                  funData:::efFourier(argvals[[3]], M = 5)))
   expect_equal(nObs(default3D), 20)
   expect_equal(nObsPoints(default3D), c(101,101,21))
-  expect_equal(mean(norm(default3D)),  117.481898) 
-  expect_equal(norm(extractObs(default3D,1)), 118.67828)
-  
+  if(packageVersion("funData") != "1.0") # in 1.0, the tensor product was defined differently
+  {
+    expect_equal(mean(norm(default3D)),  117.447302) 
+    expect_equal(norm(extractObs(default3D,1)), 118.648544)
+  }
+
   # wrapper function
   expandDefault3D <- MFPCA:::univExpansion(type = "default", scores = scores, argvals = argvals, 
                                            functions = tensorProduct(funData:::efPoly(argvals[[1]], M = 3),
                                                                      funData:::efWiener(argvals[[2]], M = 4),
                                                                      funData:::efFourier(argvals[[3]], M = 5)))
   expect_equal(expandDefault3D, default3D)
+})
+
+test_that("test univariate expansions 4D and higher", {
+  set.seed(4)
+  scores <- sapply(10:1, function(x){rnorm(20, sd = x/25)})
+  argvals <- list(1:5,1:4,1:3,1:2)
+  X <- array(runif(10*5*4*3*2), dim = c(10,5,4,3,2))
+  
+  default4D <- MFPCA:::expandBasisFunction(scores = scores, functions = funData(argvals, X))
+  expect_equal(nObs(default4D), 20)
+  expect_equal(nObsPoints(default4D), c(5,4,3,2))
+  expect_equal(default4D@X[1,1,1,1,], c(0.2971338, 0.5745175), tol = 1e-6) # minimal check, as norm etc. are not implemented for 4D data
+  
+  # wrapper function
+  expandDefault4D <- MFPCA:::univExpansion(type = "default", scores = scores, argvals = argvals,
+                                           functions = funData(argvals, X))
+  expect_equal(expandDefault4D, default4D)
 })
