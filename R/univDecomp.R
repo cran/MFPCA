@@ -49,27 +49,39 @@
 #' str(decSplines)
 univDecomp <- function(type, funDataObject, ...)
 {
-  params <- as.list(match.call()) # get all arguments
-  params$funDataObject <- funDataObject # add funDataObject (-> make sure is evaluated in correct env.)
+  # Parameter checking
+  if(is.null(type))
+    stop("Parameter 'type' is missing.")
+  else
+  {
+    if(!is.character(type))
+      stop("Parameter 'type' must be a character string. See ?univDecomp for details.")
+  } 
   
+  if(class(funDataObject) != "funData")
+    stop("Parameter 'funDataObject' must be a funData object.")
+  
+  
+  # get all arguments (except for function call and type)
+  params <- list(...) 
+
   # check if type and data are of correct type
-  if(is.null(params$type))
+  if(is.null(type))
     stop("univDecomp: must specify 'type'.")
   
-  if(!inherits(params$type, "character"))
+  if(!inherits(type, "character"))
     stop("univDecomp: 'type' must be of class character.")
   
-  if(is.null(params$funDataObject))
+  if(is.null(funDataObject))
     stop("univDecomp: must specify 'funDataObject'.")
   
-  if(class(params$funDataObject) != "funData")
+  if(class(funDataObject) != "funData")
     stop("univDecomp: 'funDataObject' must be of class funData.")
   
-  # delete function call and type information in params
-  params[[1]] <- NULL
-  params$type <- NULL  
+  params$funDataObject <- funDataObject # add funDataObject (-> make sure is evaluated in correct env.)
   
   res <- switch(type,
+                "given" = do.call(givenBasis, params),
                 "uFPCA" = do.call(fpcaBasis, params),
                 "UMPCA" = do.call(umpcaBasis, params),
                 "FCP_TPA" = do.call(fcptpaBasis, params),
@@ -86,6 +98,61 @@ univDecomp <- function(type, funDataObject, ...)
     stop("UnivDecomp: must provide integral matrix B for non-orthonormal basis functions.")
   
   return(res)
+}
+
+#' Use given basis functions for univariate representation
+#' 
+#' @param funDataObject An object of class \code{\link[funData]{funData}} 
+#'   containing the observed functional data samples and for which the basis 
+#'   representation is to be calculated.
+#' @param functions A \code{funData} object that contains the basis 
+#'   functions.
+#' @param scores An optional matrix containing the scores or coefficients of 
+#'   the individual observations and each basis function. If \code{N} denotes
+#'   the number of observations and \code{K} denotes the number of basis 
+#'   functions, then \code{scores} must be a matrix of dimensions \code{N x 
+#'   K}. If not supplied, the scores are calculated as projection of each 
+#'   observation on the basis functions.
+#' @param ortho An optional parameter, specifying whether the given basis 
+#'   functions are orthornomal (\code{ortho = TRUE}) or not (\code{ortho = 
+#'   FALSE}). If not supplied, the basis functions are considered as 
+#'   non-orthonormal and their pairwise scalar product is calculated for 
+#'   later use in the MFPCA.
+#'   
+#' @return \item{scores}{The coefficient matrix.} \item{B}{A matrix
+#'   containing the scalar product of all pairs of basis functions. This is
+#'   \code{NULL}, if \code{ortho = TRUE}.}\item{ortho}{Logical, set to 
+#'   \code{TRUE}, if basis functions are orthonormal.} \item{functions}{A 
+#'   functional data object containig the basis functions.}
+#'  
+#'  @keywords internal
+givenBasis <- function(funDataObject, functions, scores = NULL, ortho = NULL)
+{
+  # check if funDataObject and functions are defined on the same domain
+  if( ! isTRUE(all.equal(getArgvals(funDataObject), getArgvals(functions))) )
+    stop("Basis functions must be defined on the same domain as the observations.")
+  
+  # check if scores have to be calculated
+  if(is.null(scores))
+    scores <- sapply(1:nObs(functions), function(i){ scalarProduct(funDataObject, extractObs(functions, i))})
+  
+  # check if scores have correct dimensions
+  if( ! isTRUE(all.equal(dim(scores), c(nObs(funDataObject), nObs(functions)))) )
+    stop("Scores have wrong dimensions. Must be an N x K matrix with N the number of observations and K the number of basis functions.")
+  
+  if(is.null(ortho))
+    ortho <- FALSE
+  
+  if(ortho == TRUE)
+    B <- NULL
+  else
+    B <- calcBasisIntegrals(functions@X, dimSupp(functions), funDataObject@argvals)
+  
+  return(list(scores = scores,
+              B = B,
+              ortho = ortho,
+              functions = functions
+  ))
 }
 
 #' Calculate a functional principal component basis representation for 
@@ -127,14 +194,14 @@ univDecomp <- function(type, funDataObject, ...)
 #'   
 #' @seealso \code{\link{univDecomp}}, \code{\link{PACE}}
 #' 
-#' @export fpcaBasis
+#' @keywords internal
 #' 
 #' @examples
 #' # simulate N = 100 observations of functional data based on polynomial eigenfunctions on [0,1]
 #' sim <- simFunData(argvals = seq(0,1,0.01), M = 5, eFunType = "Poly", eValType = "linear", N = 100)
 #' 
 #' # estimate the first 5 functional principal components from the data
-#' fpca <- fpcaBasis(sim$simData, npc = 5)
+#' fpca <- MFPCA:::fpcaBasis(sim$simData, npc = 5)
 #' 
 #' oldpar <- par(no.readonly = TRUE)
 #' par(mfrow = c(1,2))
@@ -197,7 +264,7 @@ fpcaBasis <- function(funDataObject, nbasis = 10, pve = 0.99, npc = NULL, makePD
 #'   Multilinear Subspace Learning", IEEE Transactions on Neural Networks, Vol. 
 #'   20, No. 11, Page: 1820-1836, Nov. 2009.
 #'   
-#' @export umpcaBasis
+#' @keywords internal
 #' 
 #' @examples
 #' # simulate image data for N = 100 observations
@@ -208,13 +275,13 @@ fpcaBasis <- function(funDataObject, nbasis = 10, pve = 0.99, npc = NULL, makePD
 #' scores <- matrix(rnorm(N*56), nrow = N)
 #' 
 #' # calculate observations (= linear combination of basis functions)
-#' f <- expandBasisFunction(scores = scores, functions = b)
+#' f <- MFPCA:::expandBasisFunction(scores = scores, functions = b)
 #' 
 #' # calculate basis functions based on UMPCA algorithm (needs some time)
 #' \donttest{
 #' # throws warning as the function aims more at  uncorrelated features than at
 #' # optimal data reconstruction (see help)
-#' umpca <- umpcaBasis(f, npc = 5) 
+#' umpca <- MFPCA:::umpcaBasis(f, npc = 5) 
 #' 
 #' oldpar <- par(no.readonly = TRUE)
 #' 
@@ -317,7 +384,7 @@ makeDiffOp <- function(degree, dim){
 #'  In IEEE International Workshop on Computational Advances in Multi-Sensor 
 #'  Adaptive Processing, 2013.
 #'  
-#'@export fcptpaBasis
+#' @keywords internal
 #'  
 #' @examples
 #' # simulate image data for N = 100 observations
@@ -328,11 +395,11 @@ makeDiffOp <- function(degree, dim){
 #' scores <- matrix(rnorm(N*56), nrow = N)
 #' 
 #' # calculate observations (= linear combination of basis functions)
-#' f <- expandBasisFunction(scores = scores, functions = b)
+#' f <- MFPCA:::expandBasisFunction(scores = scores, functions = b)
 #' 
 #' # calculate basis functions based on FCP_TPA algorithm (needs some time)
 #' \donttest{
-#' fcptpa <- fcptpaBasis(f, npc = 5, alphaRange = list(v = c(1e-5, 1e5), w = c(1e-5, 1e5)))
+#' fcptpa <- MFPCA:::fcptpaBasis(f, npc = 5, alphaRange = list(v = c(1e-5, 1e5), w = c(1e-5, 1e5)))
 #' 
 #' oldpar <- par(no.readonly = TRUE)
 #' 
@@ -438,7 +505,7 @@ fcptpaBasis <- function(funDataObject, npc, smoothingDegree = rep(2,2), alphaRan
 #' @importFrom stats lm
 #' @importFrom mgcv gam s
 #'   
-#' @export splineBasis1D
+#' @keywords internal
 #' 
 #' @examples
 #' # generate some data
@@ -446,14 +513,14 @@ fcptpaBasis <- function(funDataObject, npc, smoothingDegree = rep(2,2), alphaRan
 #'                   eFunType = "Poly", eValType = "linear", N = 100)$simData
 #'                   
 #'  # calculate spline basis decomposition
-#'  dataDec <- splineBasis1D(dat) # use mgcv's default parameters
+#'  dataDec <- MFPCA:::splineBasis1D(dat) # use mgcv's default parameters
 #'  str(dataDec)
 #'  
 #'  # add some noise to the data
 #'  noisyDat <- addError(dat, sd = 0.5)
 #'  
 #'  # calculate spline basis decomposition with penalization to reduce noise
-#'  noisyDataDec <- splineBasis1Dpen(dat) # use mgcv's default parameters
+#'  noisyDataDec <- MFPCA:::splineBasis1Dpen(dat) # use mgcv's default parameters
 #'  str(noisyDataDec)
 #'  
 #'  # check if noise has been filtered out by penalization
@@ -491,7 +558,7 @@ splineBasis1D <- function(funDataObject, bs = "ps", m = NA, k = -1)
 #' @importFrom foreach %dopar%
 #' @importFrom mgcv gam model.matrix.gam s
 #' 
-#' @export splineBasis1Dpen
+#' @keywords internal
 splineBasis1Dpen <- function(funDataObject, bs = "ps", m = NA, k = -1, parallel = FALSE)
 {
   if(dimSupp(funDataObject) != 1)
@@ -582,7 +649,7 @@ splineBasis1Dpen <- function(funDataObject, bs = "ps", m = NA, k = -1, parallel 
 #' @importFrom stats lm
 #' @importFrom mgcv gam te
 #'   
-#' @export splineBasis2D
+#' @keywords internal
 #' 
 #' @examples
 #' # simulate image data for N = 100 observations
@@ -593,11 +660,12 @@ splineBasis1Dpen <- function(funDataObject, bs = "ps", m = NA, k = -1, parallel 
 #' scores <- matrix(rnorm(N*56), nrow = N)
 #' 
 #' # calculate observations (= linear combination of basis functions)
-#' dat <- expandBasisFunction(scores = scores, functions = b)
+#' dat <- MFPCA:::expandBasisFunction(scores = scores, functions = b)
 #' 
 #' # calculate 2D spline basis decomposition (needs some time)
 #' \donttest{
-#' dataDec <- splineBasis2D(dat, k = c(5,5)) # use 5 basis functions in each direction
+#' # use 5 basis functions in each direction
+#' dataDec <- MFPCA:::splineBasis2D(dat, k = c(5,5)) 
 #' }
 #' 
 #' # add some noise to the data
@@ -605,7 +673,8 @@ splineBasis1Dpen <- function(funDataObject, bs = "ps", m = NA, k = -1, parallel 
 #' 
 #' # calculate 2D spline basis decomposition with penalization (needs A LOT more time)
 #' \donttest{
-#' noisyDataDec <- splineBasis2Dpen(noisyDat, k = c(5,5)) # use 5 basis functions in each direction
+#' # use 5 basis functions in each direction
+#' noisyDataDec <- MFPCA:::splineBasis2Dpen(noisyDat, k = c(5,5)) 
 #' }
 splineBasis2D <- function(funDataObject, bs = "ps", m = NA, k = -1)
 {
@@ -641,7 +710,7 @@ splineBasis2D <- function(funDataObject, bs = "ps", m = NA, k = -1)
 #' @importFrom foreach %dopar%
 #' @importFrom mgcv bam model.matrix.gam te
 #' 
-#' @export splineBasis2Dpen
+#' @keywords internal
 splineBasis2Dpen <- function(funDataObject, bs = "ps", m = NA, k = -1, parallel = FALSE)
 {
   if(dimSupp(funDataObject) != 2)
@@ -749,7 +818,7 @@ splineBasis2Dpen <- function(funDataObject, bs = "ps", m = NA, k = -1, parallel 
 #'   
 #' @seealso \code{\link{univDecomp}}, \code{\link{dct2D}}, \code{\link{dct3D}}
 #'   
-#' @export dctBasis2D
+#' @keywords internal
 #'   
 #' @examples
 #' # Simulate data with 10 observations on two-dimensional domain (images)
@@ -762,7 +831,7 @@ splineBasis2Dpen <- function(funDataObject, bs = "ps", m = NA, k = -1, parallel 
 #' 
 #' # Calculate basis functions: This will throw an error if fftw3 is not installed.           
 #' \dontrun{
-#' dct2D <- dctBasis2D(f2, qThresh = 0.95)
+#' dct2D <- MFPCA:::dctBasis2D(f2, qThresh = 0.95)
 #' 
 #' # verify that scores are saved in a sparse matrix
 #' dct2D$scores[,1:25] # the first 25 scores for each observation
@@ -828,7 +897,7 @@ dct2D <- function(image, qThresh)
 
 #' @rdname dctBasis2D
 #' 
-#' @export dctBasis3D
+#' @keywords internal
 dctBasis3D <- function(funDataObject, qThresh, parallel = FALSE)
 {
   if(dimSupp(funDataObject) != 3)

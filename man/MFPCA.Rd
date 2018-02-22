@@ -58,18 +58,19 @@ extra-information about the progress (incl. timestamps). Defaults to
 \code{options()$verbose}.}
 }
 \value{
-\item{values}{A vector of estimated eigenvalues \eqn{\hat \nu_1 , 
-  \ldots , \hat \nu_M}.} \item{functions}{A 
+An object of class \code{MFPCAfit} containing the following
+  components: \item{values}{A vector of estimated eigenvalues \eqn{\hat \nu_1
+  , \ldots , \hat \nu_M}.} \item{functions}{A 
   \code{\link[funData]{multiFunData}} object containing the estimated 
   multivariate functional principal components \eqn{\hat \psi_1, \ldots, \hat
   \psi_M}.} \item{scores}{ A matrix of dimension \code{N x M} containing the 
-  estimated scores \eqn{\hat \rho_{im}}.} \item{vectors}{A matrix
+  estimated scores \eqn{\hat \rho_{im}}.} \item{vectors}{A matrix 
   representing the eigenvectors associated with the combined univariate score
-  vectors. This might be helpful for calculating predictions.}
-  \item{normFactors}{The normalizing factors used for calculating the
-  multivariate eigenfunctions and scores. This might be helpful when
-  calculation predictions.} \item{meanFunction}{A multivariate functional
-  data object, corresponding to the mean function. The MFPCA is applied to
+  vectors. This might be helpful for calculating predictions.} 
+  \item{normFactors}{The normalizing factors used for calculating the 
+  multivariate eigenfunctions and scores. This might be helpful when 
+  calculation predictions.} \item{meanFunction}{A multivariate functional 
+  data object, corresponding to the mean function. The MFPCA is applied to 
   the de-meaned functions in \code{mFData}.}\item{fit}{A 
   \code{\link[funData]{multiFunData}} object containing estimated 
   trajectories for each observation based on the truncated Karhunen-Loeve 
@@ -145,7 +146,19 @@ decompositions are specified via the \code{uniExpansions} argument in the
 object, i.e. having one entry for each element of the multivariate functional
 data. For each element, \code{uniExpansion} must specify at least the type of
 basis functions to use. Additionally, one may add further parameters. The 
-following basis representations are supported: \itemize{ \item Univariate 
+following basis representations are supported: \itemize{\item Given basis functions. Then \code{uniExpansions[[j]] = 
+list(type = "given", functions, scores, ortho)}, where \code{functions} is
+a \code{funData} object on the same domain as \code{mFData}, containing 
+the given basis functions. The parameters \code{scores} and \code{ortho} 
+are optional. \code{scores} is an \code{N x K} matrix containing the 
+scores (or coefficients) of the observed functions for the given basis 
+functions, where \code{N} is the number of observed functions and \code{K}
+is the number of basis functions. If this is not supplied, the scores are 
+calculated. The parameter \code{ortho} specifies whether the given basis 
+functions are orthonormal \code{orhto = TRUE} or not \code{ortho = FALSE}.
+If \code{ortho} is not supplied, the functions are treated as 
+non-orthogonal. \code{scores} and \code{ortho} are not checked for
+plausibility, use them on your own risk!  \item Univariate 
 functional principal component analysis. Then \code{uniExpansions[[j]] = 
 list(type = "uFPCA", nbasis, pve, npc, makePD)}, where 
 \code{nbasis,pve,npc,makePD} are parameters passed to the \code{\link{PACE}} 
@@ -181,12 +194,19 @@ sim <-  simMultiFunData(type = "split", argvals = list(seq(0,1,0.01), seq(-0.5,0
 # MFPCA based on univariate FPCA
 uFPCA <- MFPCA(sim$simData, M = 5, uniExpansions = list(list(type = "uFPCA"),
                                                                   list(type = "uFPCA")))
+summary(uFPCA)
+plot(uFPCA) # plot the eigenfunctions as perturbations of the mean
+scoreplot(uFPCA) # plot the scores
 
 # MFPCA based on univariate spline expansions
 splines <- MFPCA(sim$simData, M = 5, uniExpansions = list(list(type = "splines1D", k = 10),
                                                           list(type = "splines1D", k = 10)),
                  fit = TRUE) # calculate reconstruction, too
+summary(splines)
+plot(splines) # plot the eigenfunctions as perturbations of the mean
+scoreplot(splines) # plot the scores
 
+### Compare estimates to true eigenfunctions
 # flip to make results more clear
 uFPCA$functions <- flipFuns(sim$trueFuns, uFPCA$functions)
 splines$functions <- flipFuns(sim$trueFuns, splines$functions)
@@ -215,7 +235,8 @@ legend("bottomleft", c("True", "Reconstruction"), lty = c(1,2), lwd = c(2,1))
 splinesBoot <- MFPCA(sim$simData, M = 2, uniExpansions = list(list(type = "splines1D", k = 10),
                                                           list(type = "splines1D", k = 10)),
                  bootstrap = TRUE, nBootstrap = 100, bootstrapAlpha = c(0.05, 0.1), verbose = TRUE)
-                 
+summary(splinesBoot)
+                                 
 plot(splinesBoot$functions[[1]], ylim = c(-2,1.5))
 plot(splinesBoot$CI$alpha_0.05$lower[[1]], lty = 2, add = TRUE)
 plot(splinesBoot$CI$alpha_0.05$upper[[1]], lty = 2, add = TRUE)
@@ -255,7 +276,11 @@ sim <-  simMultiFunData(type = "weighted",
 pca <- MFPCA(sim$simData, M = 10,
              uniExpansions = list(list(type = "splines2D", k = c(10,12)),
                              list(type = "uFPCA")))
+summary(pca)
+plot(pca) # plot the eigenfunctions as perturbations of the mean
+scoreplot(pca) # plot the scores
 
+### Compare to true eigenfunctions
 # flip to make results more clear
 pca$functions <- flipFuns(extractObs(sim$trueFuns, obs = 1:10), pca$functions)
 
@@ -274,13 +299,14 @@ legend("bottomleft", c("True", "MFPCA"), lty = 1:2, lwd = c(2,1))
 par(oldPar)
 }
 \references{
-C. Happ, S. Greven (2016+):Multivariate Functional Principal 
+C. Happ, S. Greven (2018): Multivariate Functional Principal 
   Component Analysis for Data Observed on Different (Dimensional) Domains. 
-  Journal of the American Statistical Association, to appear. DOI: 
+  Journal of the American Statistical Association. Advance online publication. DOI: 
   \url{http://dx.doi.org/10.1080/01621459.2016.1273115}
 }
 \seealso{
 \code{\link[funData]{multiFunData}}, \code{\link{PACE}}, 
-  \code{\link{univDecomp}}, \code{\link{univExpansion}}
+  \code{\link{univDecomp}}, \code{\link{univExpansion}}, 
+  \code{\link[=summary.MFPCAfit]{summary}}, \code{\link[=plot.MFPCAfit]{plot}}, 
+  \code{\link[=scoreplot.MFPCAfit]{scoreplot}}
 }
-
