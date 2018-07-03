@@ -1,3 +1,9 @@
+# MFPCA 1.2-3
+
+## New features
+* Skip third party tests on CRAN that lead to ATLAS/MKL/OpenBLAS issues. Add warning to documentation files.
+
+
 # MFPCA 1.2-2
 
 ## New features
