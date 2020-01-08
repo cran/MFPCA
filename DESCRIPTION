@@ -2,11 +2,11 @@ Package: MFPCA
 Type: Package
 Title: Multivariate Functional Principal Component Analysis for Data
         Observed on Different Dimensional Domains
-Version: 1.3-2
-Date: 2019-03-19
-Authors@R: person("Clara", "Happ", email = "clara.happ@stat.uni-muenchen.de",
+Version: 1.3-4
+Date: 2020-01-07
+Authors@R: person("Clara", "Happ-Kurz", email = "clara.happ@stat.uni-muenchen.de",
                   role = c("aut", "cre"), comment = c(ORCID = "0000-0003-4737-3835"))
-Maintainer: Clara Happ <clara.happ@stat.uni-muenchen.de>
+Maintainer: Clara Happ-Kurz <clara.happ@stat.uni-muenchen.de>
 Description: Calculate a multivariate functional principal component analysis
     for data observed on different dimensional domains. The estimation algorithm
     relies on univariate basis expansions for each element of the multivariate
@@ -16,12 +16,12 @@ Description: Calculate a multivariate functional principal component analysis
 URL: https://github.com/ClaraHapp/MFPCA
 License: GPL-2
 Imports: abind, foreach, irlba, Matrix, methods, mgcv, plyr, stats
-Depends: R (>= 3.2.0), funData (>= 1.2)
+Depends: R (>= 3.2.0), funData (>= 1.3-4)
 Suggests: covr, fda, testthat (>= 2.0.0)
 NeedsCompilation: yes
 SystemRequirements: libfftw3 (>= 3.3.4)
 RoxygenNote: 6.0.1
-Packaged: 2019-03-20 20:25:19 UTC; clara
-Author: Clara Happ [aut, cre] (<https://orcid.org/0000-0003-4737-3835>)
+Packaged: 2020-01-07 21:29:59 UTC; clara
+Author: Clara Happ-Kurz [aut, cre] (<https://orcid.org/0000-0003-4737-3835>)
 Repository: CRAN
-Date/Publication: 2019-03-20 23:13:30 UTC
+Date/Publication: 2020-01-08 09:30:03 UTC

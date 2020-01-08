@@ -1,3 +1,15 @@
+# MFPCA 1.3-4
+
+## New features
+* Update maintainer and link to Allen (2013) paper.
+* Don't use `funData`'s `.intWeight` method as an internal method with `:::`. Requires new `funData` version.
+
+
+# MFPCA 1.3-3
+
+## New features
+* Fix unit tests failing due to matrix / array objects having multiple classes in newest Rdevel version.
+
 # MFPCA 1.3-2
 
 ## New features
