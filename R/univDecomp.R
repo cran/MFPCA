@@ -110,31 +110,31 @@ univDecomp <- function(type, funDataObject, ...)
 }
 
 #' Use given basis functions for univariate representation
-#' 
-#' @param funDataObject An object of class \code{\link[funData]{funData}} 
-#'   containing the observed functional data samples and for which the basis 
-#'   representation is to be calculated.
-#' @param functions A \code{funData} object that contains the basis 
-#'   functions.
-#' @param scores An optional matrix containing the scores or coefficients of 
-#'   the individual observations and each basis function. If \code{N} denotes
-#'   the number of observations and \code{K} denotes the number of basis 
-#'   functions, then \code{scores} must be a matrix of dimensions \code{N x 
-#'   K}. If not supplied, the scores are calculated as projection of each 
-#'   observation on the basis functions.
-#' @param ortho An optional parameter, specifying whether the given basis 
-#'   functions are orthonormal (\code{ortho = TRUE}) or not (\code{ortho = 
-#'   FALSE}). If not supplied, the basis functions are considered as 
-#'   non-orthonormal and their pairwise scalar product is calculated for 
-#'   later use in the MFPCA.
-#'   
-#' @return \item{scores}{The coefficient matrix.} \item{B}{A matrix
-#'   containing the scalar product of all pairs of basis functions. This is
-#'   \code{NULL}, if \code{ortho = TRUE}.}\item{ortho}{Logical, set to 
-#'   \code{TRUE}, if basis functions are orthonormal.} \item{functions}{A 
-#'   functional data object containing the basis functions.}
-#'  
-#'  @keywords internal
+#'
+#' @param funDataObject An object of class \code{\link[funData]{funData}}
+#'   containing the observed functional data samples and for which the basis
+#'   representation is to be calculated. The data is assumed to be demeaned.
+#' @param functions A \code{funData} object that contains the basis functions.
+#' @param scores An optional matrix containing the scores or coefficients of the
+#'   individual observations and each basis function. If \code{N} denotes the
+#'   number of observations and \code{K} denotes the number of basis functions,
+#'   then \code{scores} must be a matrix of dimensions \code{N x K}. As the data
+#'   is assumed to be demeaned, each column must have an average of
+#'   approximately 0. If not supplied, the scores are calculated as projection
+#'   of each observation on the basis functions.
+#' @param ortho An optional parameter, specifying whether the given basis
+#'   functions are orthonormal (\code{ortho = TRUE}) or not (\code{ortho =
+#'   FALSE}). If not supplied, the basis functions are considered as
+#'   non-orthonormal and their pairwise scalar product is calculated for later
+#'   use in the MFPCA.
+#'
+#' @return \item{scores}{The coefficient matrix.} \item{B}{A matrix containing
+#'   the scalar product of all pairs of basis functions. This is \code{NULL}, if
+#'   \code{ortho = TRUE}.}\item{ortho}{Logical, set to \code{TRUE}, if basis
+#'   functions are orthonormal.} \item{functions}{A functional data object
+#'   containing the basis functions.}
+#'
+#' @keywords internal
 givenBasis <- function(funDataObject, functions, scores = NULL, ortho = NULL)
 {
   # check if funDataObject and functions are defined on the same domain
@@ -148,6 +148,10 @@ givenBasis <- function(funDataObject, functions, scores = NULL, ortho = NULL)
   # check if scores have correct dimensions
   if( ! isTRUE(all.equal(dim(scores), c(nObs(funDataObject), nObs(functions)))) )
     stop("Scores have wrong dimensions. Must be an N x K matrix with N the number of observations and K the number of basis functions.")
+  
+  # check if scores have mean zero
+  if( ! isTRUE(all.equal(colMeans(scores), rep(0, nObs(functions)), tolerance = 2e-1)))
+    warning("Scores seem to be not demeaned. Please check.")
   
   if(is.null(ortho))
     ortho <- FALSE
@@ -170,7 +174,7 @@ givenBasis <- function(funDataObject, functions, scores = NULL, ortho = NULL)
 #' This function calculates a functional principal component basis
 #' representation for functional data on one-dimensional domains. The FPCA is
 #' calculated via the \code{\link{PACE}} function, which is built on
-#' \link[refund]{fpca.sc} in the \pkg{refund} package.
+#' \code{fpca.sc} in the \strong{refund} package.
 #' 
 #' @param funDataObject An object of class \code{\link[funData]{funData}} 
 #'   containing the observed functional data samples and for which the FPCA is 
@@ -178,19 +182,19 @@ givenBasis <- function(funDataObject, functions, scores = NULL, ortho = NULL)
 #' @param nbasis An integer, representing the number of  B-spline basis 
 #'   functions used for estimation of the mean function and bivariate smoothing 
 #'   of the covariance surface. Defaults to \code{10} (cf. 
-#'   \code{\link[refund]{fpca.sc}}).
+#'   \code{fpca.sc} in \strong{refund}).
 #' @param pve A numeric value between 0 and 1, the proportion of variance 
 #'   explained: used to choose the number of principal components. Defaults to 
-#'   \code{0.99} (cf. \code{\link[refund]{fpca.sc}}).
+#'   \code{0.99} (cf. \code{fpca.sc} in \strong{refund}).
 #' @param npc An integer, giving a prespecified value for the number of 
 #'   principal components. Defaults to \code{NULL}. If given, this overrides 
-#'   \code{pve} (cf. \code{\link[refund]{fpca.sc}}).
+#'   \code{pve} (cf. \code{fpca.sc} in \strong{refund}).
 #' @param makePD Logical: should positive definiteness be enforced for the 
 #'   covariance surface estimate? Defaults to \code{FALSE} (cf. 
-#'   \code{\link[refund]{fpca.sc}}).
+#'   \code{fpca.sc} in \strong{refund}).
 #' @param cov.weight.type The type of weighting used for the smooth covariance
 #'   estimate in \code{\link{PACE}}. Defaults to \code{"none"}, i.e. no weighting. Alternatively, 
-#'   \code{"counts"} (corresponds to \code{\link[refund]{fpca.sc}} ) weights the pointwise estimates of the covariance function
+#'   \code{"counts"} (corresponds to \code{fpca.sc} in \strong{refund}) weights the pointwise estimates of the covariance function
 #'   by the number of observation points.
 #'   
 #' @return \item{scores}{A matrix of scores (coefficients) with dimension 
@@ -234,47 +238,47 @@ fpcaBasis <- function(funDataObject, nbasis = 10, pve = 0.99, npc = NULL, makePD
   ))
 }
 
-#' Calculate an uncorrelated multilinear principal component basis 
+#' Calculate an uncorrelated multilinear principal component basis
 #' representation for functional data on two-dimensional domains
-#' 
-#' This function calculates an uncorrelated multilinear principal component 
-#' analysis (UMPCA) representation for functional data on two-dimensional 
-#' domains. In this case, the data can be interpreted as images with \code{S1 x 
-#' S2} pixels (assuming \code{nObsPoints(funDataObject) = (S1, S2)}), i.e. the 
-#' total observed data are represented as third order tensor of dimension 
+#'
+#' This function calculates an uncorrelated multilinear principal component
+#' analysis (UMPCA) representation for functional data on two-dimensional
+#' domains. In this case, the data can be interpreted as images with \code{S1 x
+#' S2} pixels (assuming \code{nObsPoints(funDataObject) = (S1, S2)}), i.e. the
+#' total observed data are represented as third order tensor of dimension
 #' \code{N x S1 x S2}.  The UMPCA of a tensor of this kind is calculated via the
-#' \link{UMPCA} function, which is an \code{R}-version of the analogous 
-#' functions in the \code{UMPCA} MATLAB toolbox by Haiping Lu (Link: 
-#' \url{http://www.mathworks.com/matlabcentral/fileexchange/35432}, see also 
-#' references).
-#' 
-#' @section Warning: As this algorithm aims more at uncorrelated features than 
-#'   at an optimal reconstruction of the data, hence it might give poor results 
+#' \link{UMPCA} function, which is an \code{R}-version of the analogous
+#' functions in the \code{UMPCA} MATLAB toolbox by Haiping Lu (Link:
+#' \url{https://www.mathworks.com/matlabcentral/fileexchange/35432-uncorrelated-multilinear-principal-component-analysis-umpca},
+#' see also references).
+#'
+#' @section Warning: As this algorithm aims more at uncorrelated features than
+#'   at an optimal reconstruction of the data, hence it might give poor results
 #'   when used for the univariate decomposition of images in MFPCA. The function
 #'   therefore throws a warning.
-#'   
-#' @param funDataObject An object of class \code{\link[funData]{funData}} 
-#'   containing the observed functional data samples (here: images) for which 
+#'
+#' @param funDataObject An object of class \code{\link[funData]{funData}}
+#'   containing the observed functional data samples (here: images) for which
 #'   the UMPCA is to be calculated.
-#' @param npc An integer, giving the number of principal components to be 
+#' @param npc An integer, giving the number of principal components to be
 #'   calculated.
-#'   
-#' @return \item{scores}{A matrix of scores (coefficients) with dimension 
-#'   \code{N x k}, reflecting the weight of each principal component in each 
+#'
+#' @return \item{scores}{A matrix of scores (coefficients) with dimension
+#'   \code{N x k}, reflecting the weight of each principal component in each
 #'   observation.}  \item{B}{A matrix containing the scalar product of all pairs
-#'   of basis functions.} \item{ortho}{Logical, set to \code{FALSE}, as basis 
-#'   functions are not orthonormal.} \item{functions}{A functional data object, 
+#'   of basis functions.} \item{ortho}{Logical, set to \code{FALSE}, as basis
+#'   functions are not orthonormal.} \item{functions}{A functional data object,
 #'   representing the functional principal component basis functions.}
-#'   
+#'
 #' @seealso \code{\link{univDecomp}}
-#'   
-#' @references Haiping Lu, K.N. Plataniotis, and A.N. Venetsanopoulos, 
-#'   "Uncorrelated Multilinear Principal Component Analysis for Unsupervised 
-#'   Multilinear Subspace Learning", IEEE Transactions on Neural Networks, Vol. 
+#'
+#' @references Haiping Lu, K.N. Plataniotis, and A.N. Venetsanopoulos,
+#'   "Uncorrelated Multilinear Principal Component Analysis for Unsupervised
+#'   Multilinear Subspace Learning", IEEE Transactions on Neural Networks, Vol.
 #'   20, No. 11, Page: 1820-1836, Nov. 2009.
-#'   
+#'
 #' @keywords internal
-#' 
+#'
 #' @examples
 #' # simulate image data for N = 100 observations
 #' N <- 100
@@ -282,21 +286,21 @@ fpcaBasis <- function(funDataObject, nbasis = 10, pve = 0.99, npc = NULL, makePD
 #' b2 <- eFun(seq(-pi, pi, 0.03), M = 8, type = "Fourier")
 #' b <- tensorProduct(b1,b2) # 2D basis functions
 #' scores <- matrix(rnorm(N*56), nrow = N)
-#' 
+#'
 #' # calculate observations (= linear combination of basis functions)
 #' f <- MFPCA:::expandBasisFunction(scores = scores, functions = b)
-#' 
+#'
 #' # calculate basis functions based on UMPCA algorithm (needs some time)
 #' \donttest{
 #' # throws warning as the function aims more at  uncorrelated features than at
 #' # optimal data reconstruction (see help)
-#' umpca <- MFPCA:::umpcaBasis(f, npc = 5) 
-#' 
+#' umpca <- MFPCA:::umpcaBasis(f, npc = 5)
+#'
 #' oldpar <- par(no.readonly = TRUE)
-#' 
+#'
 #' for(i in 1:5) # plot all 5 basis functions
 #' plot(umpca$functions, obs = i, main = paste("Basis function", i)) # plot first basis function
-#' 
+#'
 #' par(oldpar)}
 umpcaBasis <- function(funDataObject, npc)
 {
